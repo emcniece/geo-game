@@ -40,43 +40,66 @@ angular.module('starter.directives', [])
           if( initial_render) return;
 
           initial_render = true;
-          var bounds = map.getBounds();
-          var topLeft = new google.maps.LatLng( map.getBounds().getNorthEast().lat(), map.getBounds().getSouthWest().lng() );
-          var topRight = map.getBounds().getNorthEast();
-          var btmLeft = map.getBounds().getSouthWest().lat();
-          var btmRight = new google.maps.LatLng( map.getBounds().getSouthWest().lat(),map.getBounds().getNorthEast().lng()  );
+          var radius = 100; //radius in meters
 
-          var radius = 100 * 1; //radius in meters
-          drawHorizontalHexagonGrid(map,topLeft,radius);
+          // Render grid
+          drawHorizontalHexagonGrid(map,radius);
 
         });
 
       }
 
-      function drawHorizontalHexagonGrid(map,startPosition,radius){
+      function drawHorizontalHexagonGrid(map,radius){
 
-        var cols = 11;
+        var bounds = map.getBounds();
+        var topLeft = new google.maps.LatLng( map.getBounds().getNorthEast().lat(), map.getBounds().getSouthWest().lng() );
+        var topRight = map.getBounds().getNorthEast();
+        var btmLeft = map.getBounds().getSouthWest();
+        var btmRight = new google.maps.LatLng( map.getBounds().getSouthWest().lat(),map.getBounds().getNorthEast().lng()  );
+
+        //var cols = 11;
         var rows = 4;
 
-        var curCol = startPosition;
-        var curRow = startPosition;
+        var curCol = topLeft;
+        var curRow = topLeft;
+        var direction = 90;
         var width = radius * 2 * Math.sqrt(3)/2;
 
-        for(var k = 0; k<rows; k++){      // Rows
-          curCol = google.maps.geometry.spherical.computeOffset(startPosition,width,90);
+        // Calculate how many columns we can display
+        var boundWidth = google.maps.geometry.spherical.computeDistanceBetween(topLeft, topRight);
+        var boundHeight = google.maps.geometry.spherical.computeDistanceBetween(topLeft, btmLeft);
+        var maxCols = Math.round(boundWidth / width)+1; // adding 1 because the left-most starts half off the screen
+        var maxRows = Math.round(boundHeight / width)+1;
+        console.log(topLeft, btmLeft, boundHeight, maxRows)
 
-          for(var i = 0;i < cols; i++){    // Cols
+        for(var k=0;k<maxRows;k++){              // Rows
+
+          for(var i = 0;i < maxCols; i++){    // Cols
+
+            // Mark starting column for next row calc
+            if(i === 0) startCol = curCol;
+
+            // Draw and increment in 90deg direction (east)
             drawHorizontalHexagon(map,curCol,radius);
             curCol = google.maps.geometry.spherical.computeOffset(curCol, width,90);
+
           }
+
+          // Increment row (South)
+          curCol = google.maps.geometry.spherical.computeOffset(startCol, width,180);
+
+          // Shift horizontally
+          direction = (k%2) ? 90 : 270;
+          curCol = google.maps.geometry.spherical.computeOffset(curCol, width/2,direction);
         }
+
 
       }
 
       function drawHorizontalHexagon(map,position,radius){
         var coordinates = [];
         for(var angle= 0;angle < 360; angle+=60) {
-           coordinates.push(google.maps.geometry.spherical.computeOffset(position, radius, angle));
+          coordinates.push(google.maps.geometry.spherical.computeOffset(position, radius, angle));
         }
 
         // Construct the polygon.
